@@ -1,6 +1,6 @@
 services:
   cloudflare-ddns-updater:
-    build: .
+    image: mathat13/cloudflare-ddns-updater:latest
     container_name: cloudflare-ddns-updater
     init: true
     restart: always
