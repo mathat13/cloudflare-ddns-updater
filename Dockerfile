@@ -23,4 +23,5 @@ COPY --from=builder /app/entrypoint.sh /app/entrypoint.sh
 # Make scripts executable
 RUN chmod +x /app/update-ip.sh /app/entrypoint.sh
 
+# Run the entrypoint script
 ENTRYPOINT ["/app/entrypoint.sh"]
