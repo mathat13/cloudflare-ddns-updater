@@ -1,0 +1,12 @@
+services:
+  cloudflare-ddns-updater:
+    build: .
+    container_name: cloudflare-ddns-updater
+    init: true
+    restart: always
+    env_file:
+      - .env
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
