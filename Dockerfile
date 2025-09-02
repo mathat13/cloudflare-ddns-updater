@@ -11,7 +11,7 @@ COPY entrypoint.sh /app/entrypoint.sh
 FROM alpine:latest
 
 # Install required tools: bash, curl, and dcron (cron daemon for Alpine)
-RUN apk add --no-cache bash curl dcron
+RUN apk add --no-cache bash curl dcron jq
 
 # Set a working directory
 WORKDIR /app

@@ -26,19 +26,6 @@ function get_dns_ip_and_id() {
     -H "Content-Type: application/json" | jq -r '.result[] | select(.name == "'"$NAME"'" and .type == "A") | .content, .id')
 }
 
-# Update the DNS Record with the selected values.
-function update_dns_record() {
-    # IP expected.
-    local CONTENT=$1
-
-    # Type is hard-coded due to only being able to create an A record for this to work.
-    local response=$(curl -sS -X PUT "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$DNS_ID" \
-        -H "Authorization: Bearer $PUT_KEY" \
-        -H "Content-Type: application/json" \
-        --data '{"type":"A","name":"'"$NAME"'","content":"'"$CONTENT"'","proxied":'"$PROXIED"',"ttl":'"$TTL"'}' | jq)
-    
-    echo -e "Response:\n$response\n"
-}
 
 # Start script execution
 echo -e "\e[93mRunning update-ip.sh script at $(date)\e[0m"
@@ -55,7 +42,15 @@ DNS_ID=$(echo $IPANDID | awk '{print $2}')
 # Compare the current IP with the last known IP and update on cloudflare if it has changed.
 if [ "$CURRENT_IP" != "$LAST_IP" ]; then
   echo -e "\e[33mIP has changed from $LAST_IP to $CURRENT_IP.\n\e[0m"
-  update_dns_record $CURRENT_IP
+  
+  # Add the PUT request to update the IP address on CloudFlare.
+  # Type is hard-coded due to only being able to create an A record for this to work.
+  response=$(curl -sS -X PUT "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$DNS_ID" \
+      -H "Authorization: Bearer $PUT_KEY" \
+      -H "Content-Type: application/json" \
+      --data '{"type":"A","name":"'"$NAME"'","content":"'"$CURRENT_IP"'","proxied":'"$PROXIED"',"ttl":'"$TTL"'}' | jq)
+  
+  echo -e "Response:\n$response\n"
   echo -e "\e[33mIP updated to $CURRENT_IP, response above.\n\e[0m"
 else
   echo -e "\e[33mIP has not changed.\n\e[0m"
