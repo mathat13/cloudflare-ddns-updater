@@ -16,7 +16,11 @@ RUN apk add --no-cache bash curl dcron
 # Set a working directory
 WORKDIR /app
 
+# Copy the scripts from the builder stage
 COPY --from=builder /app/update-ip.sh /app/update-ip.sh
+COPY --from=builder /app/entrypoint.sh /app/entrypoint.sh
+
+# Make scripts executable
 RUN chmod +x /app/update-ip.sh /app/entrypoint.sh
 
 ENTRYPOINT ["/app/entrypoint.sh"]
