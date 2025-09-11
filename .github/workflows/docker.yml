@@ -29,6 +29,6 @@ jobs:
         with:
           context: .
           push: false
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/update-ip:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cloudflare-ddns-updater:latest
           cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/cloudflare-ddns-updater:buildcache
           cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/cloudflare-ddns-updater:buildcache,mode=max
