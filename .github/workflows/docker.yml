@@ -1,6 +1,6 @@
 name: CI   # The name of the workflow
 
-# Triggers: run on push and pull requests
+# Triggers: run on push requests
 on:
   push:
     branches: [ main ]

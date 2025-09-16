@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -euo pipefail
 
 # Environment
@@ -7,26 +6,40 @@ NAME=${DNS_RECORD_NAME}
 PUT_KEY=${PUT_KEY}
 
 # Optional environment
-: "${TTL:=120}"
+: "${TTL:=1}"
 : "${PROXIED:=false}"
+: "${DEBUG:=false}"
 
-function get_zone_id() {
+# Log colors
+RED="\e[31m"
+GREEN="\e[32m"
+YELLOW="\e[33m"
+CYAN="\e[36m"
+RESET="\e[0m"
+
+# Logging functions
+log_info()    { echo -e "${YELLOW}[INFO] $*${RESET}"; }
+log_success() { echo -e "${GREEN}[SUCCESS] $*${RESET}"; }
+log_error()   { echo -e "${RED}[ERROR] $*${RESET}" >&2; }
+log_debug()   { if [ "$DEBUG" = "true" ]; then echo -e "${CYAN}[DEBUG] $*${RESET}"; fi }
+
+function get_zone_information() {
     # return Zone ID to outside variable
-    echo $(curl -sS -X GET "https://api.cloudflare.com/client/v4/zones?name=$NAME" \
+    response=$(curl -sS -X GET "https://api.cloudflare.com/client/v4/zones?name=$NAME" \
      -H "Authorization: Bearer $PUT_KEY" \
-     -H "Content-Type: application/json" |  jq -r '.result[] | .id')
+     -H "Content-Type: application/json")
+     #check_api_call_success "$response" "Fetch zone information"
+     echo "$response"
 }
 
-# Get the DNS Zone ID and the IP stored on CloudFlare.
-function get_dns_record_ip_and_id() {
-    # return IP to outside variable
+# Return IP and DNS zone ID for the given domain to outside variable
+function get_dns_record_information() {
     echo $(curl -sS -X GET "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
     -H "Authorization: Bearer $PUT_KEY" \
-    -H "Content-Type: application/json" | jq -r '.result[] | select(.name == "'"$NAME"'" and .type == "A") | .content, .id')
+    -H "Content-Type: application/json")
 }
 
 function create_dns_record() {
-  # Create a new DNS record if none exists
   echo $(curl -sS -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
     -H "Authorization: Bearer $PUT_KEY" \
     -H "Content-Type: application/json" \
@@ -41,7 +54,7 @@ function create_dns_record() {
 }
 
 function update_dns_record() {
-    # Add the PUT request to update the IP address on CloudFlare.
+  # Add the PUT request to update the IP address on CloudFlare.
   # Currently only supports A records.
   echo $(curl -sS -X PUT "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$DNS_ID" \
     -H "Authorization: Bearer $PUT_KEY" \
@@ -56,43 +69,80 @@ function update_dns_record() {
   )
 }
 
-# Start script execution
-echo -e "\e[93mRunning update-ip.sh script at $(date)\n\e[0m"
+function check_api_call_success() {
+
+  local api_response="$1"
+  local action="$2"  # description of the API call
+
+  if [ "$(echo "$api_response" | jq -r '.success')" != "true" ]; then
+    log_error "API call '$action' failed, error message: $(echo "$api_response" | jq -r '.errors[] | .message')\n"
+    exit 1
+  fi
+}
+
+# Check TTL is sane
+if [ "$TTL" -ne 1 ] && [ "$TTL" -lt 120 ]; then
+  log_error "Invalid TTL: $TTL. Must be 1 (auto) or >= 120, exiting."
+  exit 1
+fi
 
 # Get the external IP of the web server.
 CURRENT_IP=$(curl -s http://checkip.amazonaws.com)
 
-# Get the DNS zone ID for the domain dynamically
-ZONE_ID=$(get_zone_id)
+# Check if we successfully fetched the current IP
+if [ -z "$CURRENT_IP" ]; then
+  log_error "Failed to fetch current IP. Please check connection, exiting\n"
+  exit 1
+fi
 
-# Get the dns record id and the IP address stored in the A record on CloudFlare dynamically.
-IPANDID=$(get_dns_record_ip_and_id)
+# Get the DNS zone ID for the domain dynamically
+ZONE_RESPONSE=$(get_zone_information)
+echo "$ZONE_RESPONSE"  # pretty print the full response for debugging
+ZONE_ID=$(echo "$ZONE_RESPONSE" | jq -r '.result[] | .id')
+
+# exit if zone id is empty
+if [ -z "$ZONE_ID" ]; then
+  log_error "Failed to fetch domain zone id. Please check if the domain '$NAME' exists and the API token has the necessary permissions, exiting.\n"
+  exit 1
+fi
+
+# Attempt to grab the IP and DNS record ID from the dns record stored on cloudflare
+RECORDS_RESPONSE=$(get_dns_record_information)
+check_api_call_success "$RECORDS_RESPONSE" "Fetch DNS record"
+
+# Store the last IP and DNS ID in separate variables
+read -r LAST_IP DNS_ID < <(echo "$RECORDS_RESPONSE" | jq -r '.result[]? | select(.name == "'"$NAME"'" and .type == "A") | [.content, .id] | @tsv')
+
+log_info "Checking if a DNS record already exists for $NAME...\n"
 
 # Check if a DNS record exists
-if [ -z "$IPANDID" ]; then
-  # Create the DNS record if none exists
+if [ -z "$DNS_ID" ] && [ -z "$LAST_IP" ]; then
+  log_info "No existing DNS record found for $NAME. Creating one...\n"
+  # If so, Create the DNS record
   CREATE_RESPONSE=$(create_dns_record)
+  check_api_call_success "$CREATE_RESPONSE" "Create DNS record"
 
   # Pretty print the JSON response
   PRETTY_CREATE_RESPONSE=$(echo "$CREATE_RESPONSE" | jq)
-  echo -e "Create response:\n$PRETTY_CREATE_RESPONSE\n"
-  echo -e "\e[33mDNS record created with IP $CURRENT_IP, response above.\n\e[0m"
+  log_success "DNS record created with IP: $CURRENT_IP.\n"
+  log_debug "Create response:\n$PRETTY_CREATE_RESPONSE\n"
+
 else
   # Otherwise check if IP has changed and update if necessary
-  echo "Existing DNS record found for $NAME. Checking if IP has changed..."
-  LAST_IP=$(echo $IPANDID | awk '{print $1}')
-  DNS_ID=$(echo $IPANDID | awk '{print $2}')
+  log_info "Existing DNS record found for $NAME. Checking if IP has changed...\n"
 
   if [ "$CURRENT_IP" != "$LAST_IP" ]; then
-    echo -e "\e[33mIP has changed from $LAST_IP to $CURRENT_IP.\n\e[0m"
+    log_info "Record IP has changed from $LAST_IP to $CURRENT_IP.\n"
     # Update the DNS record with the new IP
-    UPDATE_RESPONSE=$(update_dns_record) 
+    UPDATE_RESPONSE=$(update_dns_record)
+    check_api_call_success "$UPDATE_RESPONSE" "Update DNS record"
 
     # Pretty print the JSON response
     PRETTY_UPDATE_RESPONSE=$(echo "$UPDATE_RESPONSE" | jq)
-    echo -e "Update response:\n$PRETTY_UPDATE_RESPONSE\n"
-    echo -e "\e[33mIP updated to $CURRENT_IP, response above.\n\e[0m"
+    log_success "Record IP updated to $CURRENT_IP.\n"
+    log_debug "Update response:\n$PRETTY_UPDATE_RESPONSE\n"
+
   else
-    echo -e "\e[33mIP has not changed, exiting.\n\e[0m"
+    log_info "IP has not changed, exiting.\n"
   fi
 fi

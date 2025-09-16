@@ -4,11 +4,11 @@ set -euo pipefail
 # Default to 10 minutes (600s) if not set in .env
 : "${UPDATE_FREQUENCY:=600}"
 
-echo "[entrypoint] Running /app/update-ip.sh every ${UPDATE_FREQUENCY}s\n"
+echo -e "\e[33m[entrypoint] Running /app/update-ip.sh every ${UPDATE_FREQUENCY}s\n\e[0m"
 
 while true; do
-  echo "[entrypoint] Starting update-ip.sh at $(date)\n"
+  echo -e "\e[33m[entrypoint] Starting update-ip.sh at $(date)\n\e[0m"
   /app/update-ip.sh
-  echo "[entrypoint] Finished run, sleeping for ${UPDATE_FREQUENCY}s\n"
+  echo -e "\e[33m[entrypoint] Finished run, sleeping for ${UPDATE_FREQUENCY}s\n\e[0m"
   sleep "$UPDATE_FREQUENCY"
 done
