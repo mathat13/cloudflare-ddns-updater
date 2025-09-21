@@ -1,6 +1,19 @@
+# Quick Reference:
+
+Git repo:
+https://github.com/mathat13/cloudflare-ddns-updater
+
+Where to file issues:
+https://github.com/mathat13/cloudflare-ddns-updater/issues
+
+Maintained by:
+[mathat13](https://github.com/mathat13)
+
+
+
 # Image overview:
 
-Hello and welcome to my image, this is the first image that I have published and as such, will most likely not be suitable for enterprise solutions, but should be suitable for any home user.  There are many alternatives to this image that accomplish the same task, mine is designed to be as simple as possible, so that it can be set up easily and forgotten about while it accomplishes it's task.  The script currently runs every 5 minutes, set in stone, it's possible in future updates that this will be changed to make a custom interval possible.
+Hello and welcome to my image, this is the first image that I have published and as such, will most likely not be suitable for enterprise solutions, but should be suitable for any home user.  There are many alternatives to this image that accomplish the same task, mine is designed to be as simple as possible, so that it can be set up easily and forgotten about while it accomplishes it's task. *Now even simpler!*  This image currently supports A records only and no subdomain support yet, possibly in a future update.  But this shouldn't matter if you only want to keep the external IP of your network up to date on CloudFlare.
 
 # Who is this image for?
 
@@ -8,7 +21,7 @@ This image is for any home lab hobbyist to be able to set up their own DDNS with
 
 # What problem does this image solve?
 
-This image is designed to update the IP record of your domain's external IP on your Cloudflare DNS account through the CloudFlare API.  This is designed for a user who wishes to set up their own website/ other services that they would like to expose to the internet.  One of the problems that some users, including myself, experience is that whenever their router is reset, there's a chance that the external IP of their network will change!  This is not ideal as the usual way to update the IP of your network on CloudFlare is manually, meaning that you would have to notice that the IP had changed to begin with, possibly by a rude text message from one of your website's users, then log in to your CloudFlare account and update the DNS A record so that it matches your current external IP, this would unfortunately mean that none of your service's users could access your services in the meantime.  This image basically monitors your network's external IP and then automatically updates CloudFlare whenever there is a change, so that you can sit back, relax and confidently avoid any further rude messages, at least for this issue.
+This image is designed to update the IP record of your domain's external IP on your Cloudflare DNS account through the CloudFlare API.  This is designed for a user who wishes to set up their own website/ other services that they would like to expose to the internet.  One of the problems that some users, including myself, experience is that whenever their router is reset, there's a chance that the external IP of their network will change!  This is not ideal as the usual way to update the IP of your network on CloudFlare is manually, meaning that you would have to notice that the IP had changed to begin with, perhaps with a rude text message from one of your website's users, then log in to your CloudFlare account and update the DNS A record so that it matches your current external IP, this would unfortunately mean that none of your service's users could access your services until this has happened.  This image basically monitors your network's external IP and then automatically updates CloudFlare whenever there is a change, so that you can sit back, relax and confidently avoid any further rude messages, at least for this issue.
 
 # How to use this image
 
@@ -28,16 +41,6 @@ I tend to use the [Installation Script](https://github.com/docker/docker-install
 
 This is simply the text string that you want to navigate to to reach your website or service (e.g. example.com), write it in a text document.
 
-### The Zone ID of your Domain
-
-This is the unique identifier for your DNS Zone, follow instructions [here](https://developers.cloudflare.com/fundamentals/setup/find-account-and-zone-ids/) to find it, then label and add it to the text document.
-
-### A DNS A record for your domain name
-
-You will need to create your DNS record for your domain manually, instructions can be found [here](https://developers.cloudflare.com/dns/manage-dns-records/how-to/create-dns-records/), below are the required settings, your current external IP can be found [here](http://checkip.amazonaws.com/).  Note: The image is not designed to create a DNS record that it then updates, so if this is not set up correctly, the container is likely to function correctly.  The most important part is that it is an A record and that your_domain_name matches your domain name:
-
-![Alt text](https://i.ibb.co/Gt2kFK0/A-Record-Example.png)
-
 ### A CloudFlare API PUT key
 
 This will have to be generated by yourself for your account, remember that any API key is very sensitive and shouldn't be shared with anyone, lest the person will be able to do anything that this API key allows them to do.  Instructions to navigate to the Create Custom API token page can be found [here](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) and the specific settings for the PUT key are shown below:
@@ -46,17 +49,27 @@ This will have to be generated by yourself for your account, remember that any A
 
 The next page will contain a string of characters that represents your API key, write this down in your text file and label it as the PUT Key.
 
-### A CloudFlare API GET key
+### Anything Else?
 
-Follow the same instructions as in the previous section, but this time use the below settings for the GET key:
-
-![Alt text](https://i.ibb.co/pjZpB48/GET-example.png)
-
-Write this down in your text document and label it as the API GET key, I believe that the API PUT key includes read capabilities so this may be removed in the future.
+That's it! Previously, you would need to find your domain Zone ID, create the A record for your domain manually, and create an API GET key.  But The first two are now fetched dynamically and an API PUT key has the permissions of an API GET key and more, so we don't need them anymore.
 
 # Bringing it all together
 
 Now that you have all the information needed to get this image running in a container, we will bring it all together.  In this section you will find the docker run command and Docker Compose file to run this image in a container on your own server!  I would recommend that you put your sensitive information like API keys into an .env file and change the permissions so that only administrators can read it, each way is highlighted in this section.
+
+## .env Variables
+
+You will be able to find an example .env file that you can use as a template in the github repository for this image, named [.env.example](https://github.com/mathat13/cloudflare-ddns-updater/blob/main/.env.example), I'll just go over each variable here so that you know what is possible:
+
+| Variable           | Description                                                                                                                                          | Default   |
+|--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| `DNS_RECORD_NAME`  | Your domain name, you should have this in your text document (**required**). | —         |
+| `PUT_KEY`          | API token used to authenticate against the CloudFlare API (**required**). | —         |
+| `TTL`              | Time to Live for the record stored on CloudFlare. Default is `1` (CloudFlare "auto"). Values above 120 are supported. | `1`       |
+| `PROXIED`          | Whether CloudFlare should proxy traffic through its servers. Default is `false`. Can improve security, but may cause issues with reverse proxies.    | `false`   |
+| `UPDATE_FREQUENCY` | Interval (in seconds) between checks of your external IP against the record stored on CloudFlare. | `600`     |
+| `LOG_LEVEL`        | Logging verbosity. Options: `0` = Success/Failure only, `1` = Informational, `2` = Debug.         | `1`       |
+
 
 ## Setup Instructions
 
@@ -78,7 +91,7 @@ nano cloudflare-ddns-updater.yml
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-Step 3 (optional): Create the .env file, paste the template in the next section into it, fill out with your values and save:
+Step 3 (optional): Create the .env file, paste the [template](https://github.com/mathat13/cloudflare-ddns-updater/blob/main/.env.example) from the github repo, fill out with your values and save:
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -102,7 +115,7 @@ sudo docker compose -f cloudflare-ddns-updater.yml up -d
 
 or by running the no .env docker run command in the command examples below.
 
-Step 5: The script is set to execute every 5 minutes, so check the logs with the below command to see how it goes:
+Step 5: The script is set to execute every UPDATE_FREQUENCY, so check the logs with the below command to see how it goes:
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -134,8 +147,6 @@ docker run -d \
   --log-opt max-file=3 \
   -e DNS_RECORD_NAME=your_zone_name \
   -e PUT_KEY=your_put_key \
-  -e GET_KEY=your_get_key \
-  -e DNS_ZONE_ID=your_zone_id \
   -itd mathat13/cloudflare-ddns-updater:latest
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -157,8 +168,6 @@ services:
     environment:
       - DNS_RECORD_NAME=your_zone_name
       - PUT_KEY=your_put_key
-      - GET_KEY=your_get_key
-      - DNS_ZONE_ID=your_zone_id
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -204,6 +213,5 @@ services:
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 DNS_RECORD_NAME=your_record_name
 PUT_KEY=your_put_key
-GET_KEY=your_get_key
-DNS_ZONE_ID=your_zone_id
+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

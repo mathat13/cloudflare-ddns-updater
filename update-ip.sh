@@ -10,6 +10,11 @@ PUT_KEY=${PUT_KEY}
 : "${PROXIED:=false}"
 : "${LOG_LEVEL:=1}"
 
+# Logging levels:
+# 0 = ERROR/ SUCCESS only
+# 1 = INFO
+# 2 = DEBUG
+
 # Log colors
 RED="\e[31m"
 GREEN="\e[32m"
@@ -18,13 +23,14 @@ CYAN="\e[36m"
 RESET="\e[0m"
 
 # Logging functions
+# Success and error functions add \n as these are assumed end of script logs
+# Debug prints to stderr to allow debug logs in functions that return values
 log_success() { if [ "$LOG_LEVEL" -ge 0 ]; then echo -e "${GREEN}[SUCCESS] $*\n${RESET}"; fi }
 log_error()   { if [ "$LOG_LEVEL" -ge 0 ]; then echo -e "${RED}[ERROR] $*\n${RESET}" >&2; fi }
 log_info()    { if [ "$LOG_LEVEL" -ge 1 ]; then echo -e "${YELLOW}[INFO] $*${RESET}"; fi }
 log_debug()   { if [ "$LOG_LEVEL" -ge 2 ]; then echo -e "${CYAN}[DEBUG] $*${RESET}" >&2; fi }
 
 function get_zone_information() {
-  # return Zone ID to outside variable
   response=$(curl -sS -X GET "https://api.cloudflare.com/client/v4/zones?name=$NAME" \
    -H "Authorization: Bearer $PUT_KEY" \
    -H "Content-Type: application/json")
@@ -32,7 +38,6 @@ function get_zone_information() {
   echo "$response"
 }
 
-# Return IP and DNS zone ID for the given domain to outside variable
 function get_dns_record_information() {
   response=$(curl -sS -X GET "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records" \
   -H "Authorization: Bearer $PUT_KEY" \
@@ -58,7 +63,6 @@ function create_dns_record() {
 }
 
 function update_dns_record() {
-  # Add the PUT request to update the IP address on CloudFlare.
   # Currently only supports A records.
   response=$(curl -sS -X PUT "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$DNS_ID" \
     -H "Authorization: Bearer $PUT_KEY" \
@@ -75,6 +79,8 @@ function update_dns_record() {
   echo "$response"
 }
 
+# This function allows us to guaruntee that any API call function is confirmed successful if execution continues.
+# As each API call function calls this function and this function exits if the call was not successful
 function check_api_call_success() {
 
   local api_response="$1"
@@ -115,7 +121,7 @@ log_debug "Extracting zone ID from response..."
 ZONE_ID=$(echo "$ZONE_RESPONSE" | jq -r '.result[] | .id')
 log_debug "Fetched zone ID: $ZONE_ID"
 
-# exit if zone id is empty
+# exit if zone id is empty (remove right?)
 if [ -z "$ZONE_ID" ]; then
   log_error "Failed to fetch domain zone ID. Please check if the domain '$NAME' exists and the API token has the necessary permissions, exiting."
   exit 1
@@ -161,7 +167,7 @@ else
     log_success "Record IP updated to $CURRENT_IP."
 
   else
-    # Added \n here as this is undoubtedly an info log but still an end to to script
+    # Added \n here as this is undoubtedly an info log but still an end to the script
     log_info "IP has not changed, exiting.\n"
   fi
 fi
