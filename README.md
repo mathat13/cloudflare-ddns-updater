@@ -9,8 +9,6 @@ https://github.com/mathat13/cloudflare-ddns-updater/issues
 Maintained by:
 [mathat13](https://github.com/mathat13)
 
-
-
 # Image overview:
 
 Hello and welcome to my image, this is the first image that I have published and as such, will most likely not be suitable for enterprise solutions, but should be suitable for any home user.  There are many alternatives to this image that accomplish the same task, mine is designed to be as simple as possible, so that it can be set up easily and forgotten about while it accomplishes it's task. *Now even simpler!*  This image currently supports A records only and no subdomain support yet, possibly in a future update.  But this shouldn't matter if you only want to keep the external IP of your network up to date on CloudFlare.
@@ -55,21 +53,7 @@ That's it! Previously, you would need to find your domain Zone ID, create the A 
 
 # Bringing it all together
 
-Now that you have all the information needed to get this image running in a container, we will bring it all together.  In this section you will find the docker run command and Docker Compose file to run this image in a container on your own server!  I would recommend that you put your sensitive information like API keys into an .env file and change the permissions so that only administrators can read it, each way is highlighted in this section.
-
-## .env Variables
-
-You will be able to find an example .env file that you can use as a template in the github repository for this image, named [.env.example](https://github.com/mathat13/cloudflare-ddns-updater/blob/main/.env.example), I'll just go over each variable here so that you know what is possible:
-
-| Variable           | Description                                                                                                                                          | Default   |
-|--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
-| `DNS_RECORD_NAME`  | Your domain name, you should have this in your text document (**required**). | —         |
-| `PUT_KEY`          | API token used to authenticate against the CloudFlare API (**required**). | —         |
-| `TTL`              | Time to Live for the record stored on CloudFlare. Default is `1` (CloudFlare "auto"). Values above 120 are supported. | `1`       |
-| `PROXIED`          | Whether CloudFlare should proxy traffic through its servers. Default is `false`. Can improve security, but may cause issues with reverse proxies.    | `false`   |
-| `UPDATE_FREQUENCY` | Interval (in seconds) between checks of your external IP against the record stored on CloudFlare. | `600`     |
-| `LOG_LEVEL`        | Logging verbosity. Options: `0` = Success/Failure only, `1` = Informational, `2` = Debug.         | `1`       |
-
+Now that you have all the information needed to get this image running in a container, we will bring it all together.  In this section you will learn how to set up the container so that you can set it and forget it, as well as the reference docker compose, docker run, and .env file variables that you can use.  I would recommend that you put your sensitive information like API keys into the .env file and change the permissions so that only administrators can read it, each way is highlighted in this section.
 
 ## Setup Instructions
 
@@ -83,15 +67,15 @@ mkdir cloudflare-ddns-updater && cd cloudflare-ddns-updater
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-Step 2: Copy the Docker Compose of your choosing in the below section and save it to a file named ‘cloudflare-ddns-updater.yml’
-
+Step 2: Copy the Docker Compose of your choosing in the 'Reference Information' section below and save it to a file named ‘cloudflare-ddns-updater.yml’.
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 nano cloudflare-ddns-updater.yml
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+If you'd prefer to use a docker run command that you can just run in your shell, a minimal example can be also be found in the same place, and this step can be safely skipped.
 
-Step 3 (optional): Create the .env file, paste the [template](https://github.com/mathat13/cloudflare-ddns-updater/blob/main/.env.example) from the github repo, fill out with your values and save:
+Step 3: If using a .env file, you will now create it, copy and paste the [template](https://github.com/mathat13/cloudflare-ddns-updater/blob/main/.env.example) from the github repo, fill out with your values and save:
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -99,23 +83,24 @@ touch .env && sudo chown root:root .env && sudo chmod 600 .env && sudo nano .env
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-This file will be restricted so that only root can open and edit it, so remember to sudo before trying to open it.
+This file will be restricted so that only root can open and edit it, so remember to sudo before trying to edit or view it.
 
-The project structure should look as below at this point:
+The project structure should look as below at this point if using docker compose and a .env file:
 
 ![Alt text](https://i.ibb.co/7YR1L4H/project-structure.png)
 
-Step 4: Bring the container up with:
+ you won't actually have any files or a requirement of a project directory if using docker run without a .env file.
 
+Step 4: Bring the container up with:
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 sudo docker compose -f cloudflare-ddns-updater.yml up -d
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-or by running the no .env docker run command in the command examples below.
+or by running the docker run command of your choosing in your shell.
 
-Step 5: The script is set to execute every UPDATE_FREQUENCY, so check the logs with the below command to see how it goes:
+Step 5: The script is set to execute every $UPDATE_FREQUENCY, so check the logs with the below command to see how it goes:
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -131,11 +116,27 @@ docker container ls
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-# Docker command and compose examples
+# Reference information
 
-## No .env file:
+## Environment Variables
 
-### Docker run
+You will be able to find an example .env file that you can use as a template in the github repository for this image, named [.env.example](https://github.com/mathat13/cloudflare-ddns-updater/blob/main/.env.example), I'll just go over each variable here so that you know what is possible:
+
+| Variable           | Description                                                                                                                                          | Default   |
+|--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| `DNS_RECORD_NAME`  | Your domain name, you should have this in your text document (**required**). | —         |
+| `PUT_KEY`          | API token used to authenticate against the CloudFlare API (**required**). | —         |
+| `TTL`              | Time to Live for the record stored on CloudFlare. Default is `1` (CloudFlare "auto"). Values above 120 are supported. | `1`       |
+| `PROXIED`          | Whether CloudFlare should proxy traffic through its servers. Default is `false`. Can improve security, but may cause issues with reverse proxies.    | `false`   |
+| `UPDATE_FREQUENCY` | Interval (in seconds) between checks of your external IP against the record stored on CloudFlare. | `600`     |
+| `LOG_LEVEL`        | Logging verbosity. Options: `0` = Success/Failure only, `1` = Informational, `2` = Debug.         | `1`       |
+
+
+## Docker command and compose examples
+
+### No .env file
+
+#### Docker run:
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -151,7 +152,7 @@ docker run -d \
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-### Docker Compose
+#### Docker Compose:
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -170,10 +171,11 @@ services:
       - PUT_KEY=your_put_key
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Note that we will use -e/ environment: to declare environment variables in the run command/ compose file, just follow the pattern to add more environment varaibles.  These will be all you need to run the container though.  All supported environment variables can be found in the above 'Environment Variables' section.
 
-## With .env file:
+### With .env file:
 
-### Docker run:
+#### Docker run:
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -188,7 +190,7 @@ docker run -d \
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-### Docker Compose:
+#### Docker Compose:
 
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -206,12 +208,23 @@ services:
         max-file: "3"
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+# Versioning
 
-### .env file:
+Versioning
 
+This image follows Semantic Versioning (MAJOR.MINOR.PATCH):
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-DNS_RECORD_NAME=your_record_name
-PUT_KEY=your_put_key
+MAJOR (2.x.x) – Breaking changes. If functionality changes in a way that requires manual intervention, the major version will increment.
 
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+MINOR (1.1.x) – Backwards-compatible improvements or new features.
+
+PATCH (1.1.1) – Backwards-compatible bug fixes.
+
+The latest tag always points to the most recent stable release.
+If you prefer to pin a specific version, all published versions are available on the Tags tab.
+
+If you encounter issues, please raise an issue in the [GitHub repository](https://github.com/mathat13/cloudflare-ddns-updater/issues).
+
+# Licensing
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/mathat13/cloudflare-ddns-updater/blob/main/LICENSE)
