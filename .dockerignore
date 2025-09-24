@@ -1,0 +1,6 @@
+# Ignore everything
+*
+
+# Keep only the scripts we actually need
+!update-ip.sh
+!entrypoint.sh

@@ -28,7 +28,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: false
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cloudflare-ddns-updater:latest
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/cloudflare-ddns-updater:latest ${{ secrets.DOCKERHUB_USERNAME }}/cloudflare-ddns-updater:1.1.0
           cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/cloudflare-ddns-updater:buildcache
           cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/cloudflare-ddns-updater:buildcache,mode=max
